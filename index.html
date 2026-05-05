@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PolyWordle</title>
+<style>
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(76,111,255,.28), transparent 28%),
+        radial-gradient(circle at 80% 80%, rgba(47,217,198,.18), transparent 24%),
+        linear-gradient(135deg,#1a1a1a,#292b54,#000);
+    color:white;
+    overflow-x:hidden;
+    font-family:Arial,sans-serif;
+    margin: 0;
+}
+
+.container{
+    width:min(980px, calc(100% - 24px));
+    padding:30px;
+    border-radius:18px;
+    background:rgba(15,15,20,.72);
+    box-shadow:0 24px 80px rgba(0,0,0,.45);
+    backdrop-filter:blur(12px);
+}
+
+.controls {
+    position: relative;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+input{
+    flex: 1;
+    padding:15px 16px;
+    border:none;
+    outline:none;
+    border-radius:14px;
+    background:rgba(255,255,255,.08);
+    color:white;
+    font-size:18px;
+}
+
+button{
+    padding:15px 20px;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(135deg,#4c6fff,#2fd9c6);
+    color:white;
+    font-weight:700;
+    cursor:pointer;
+}
+
+button.restart {
+    background: linear-gradient(135deg, #ff4c4c, #ff904c);
+}
+
+#hintBox {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    width: calc(100% - 220px);
+    background: #111;
+    border: 1px solid #444;
+    border-radius: 12px;
+    z-index: 999;
+    max-height: 250px;
+    overflow-y: auto;
+    display: none;
+}
+
+.hint-item{
+    padding:12px;
+    cursor:pointer;
+    border-bottom: 1px solid #222;
+    transition: background 0.2s;
+}
+
+.hint-item:hover {
+    background: #333;
+}
+
+.guess-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    margin-top:10px;
+}
+
+.letter{
+    width:40px;
+    height:40px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-weight:bold;
+    border-radius:6px;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+.green{background:green;}
+.yellow{background:gold;color:black;}
+.gray{background:gray;}
+
+#message {
+    margin-bottom: 15px;
+    font-weight: bold;
+    min-height: 24px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>PolyWordle</h1>
+    
+    <div class="controls">
+        <input type="text" id="guessInput" placeholder="Enter item name" autocomplete="off">
+        <button onclick="submitGuess()">Guess</button>
+        <button class="restart" onclick="restartGame()">Restart</button>
+        <div id="hintBox"></div>
+    </div>
+
+    <div id="message"></div>
+    <div id="guesses"></div>
+</div>
+
+<script>
+const items = [
+"Airstriker", "Nikolai", "Appe", "The Backburner", "Ubersaw", "Jarate", "Jackhammer", "Razorback", "Webley", "The Vampirism", 
+"The Bone Buster", "The Force O' Radic", "Huo-Long Heater", "The Warmonger's War Helm", "Loch N Load", "The Original", 
+"Tom Tom", "Chargin Targe", "The Bloxy Cola", "The Crits-A-Crag", "The Drunken Pipe Bomb", "The Dead Ringer", 
+"The Ullapool Caber", "The Mean Business", "The Commando", "The Claidheamh Mor", "The Enrichment Macabre", 
+"The Unreliable Club", "The Fatty Machete", "Tickle Time", "The Conscientious Objector", "The Frying Pan", 
+"The Peruvian Lander", "The Sco'Man's Bloodsucker", "The Supreme Idea", "The Sword O Land", "The Disciplinary Action", 
+"The Scrapy Scuba", "The Team Captain", "The Crown Of Champion", "The Wiseless Visor", "The Deus Ex Machina", 
+"The Sydney Sleeper", "The Noob Hat", "Virtual War", "A Traffic Cone", "Chef's Well Done", "The Stainless Pot", 
+"Pigeon's Attitude", "Farm Machine", "The Head Delivery", "The Ushanka", "Content Keeper", "The Direct Hit", 
+"The Market Gardener", "The Splendid Screen", "The Tide Turner", "BANZAI", "Crossbow", "The Gunslinger", 
+"The Rapid Resuscitator", "The Sky Saboteur", "Sandbox Terror", "Explosive Fiesta", "The Sticky Jumper", 
+"The Rocket Jumper", "The Concheror", "The Eviction Notice", "The Buff Banner", "The Bloxaide", "The Dark Cube", 
+"The Loose Cannon", "The Escape Plan", "The Golden Frying Pan", "The Medical Vindication", "The Iron Bomber", 
+"The Danger", "Wiki Hat", "Broker's Bowler", "Wannabe Ninja", "The Violent Slapstick", "Southern Safari", 
+"Reckless Renegade", "The Lugermorph", "The Dream Layers", "Dreams Of Lucidity", "The Conformist Style", 
+"Hunting Season", "Bunny Ears", "Flower Laurer", "Egg Pal", "Trolololo Mask", "The AWPer Hand", 
+"Guttergun & Guttershield", "The Bargain Bazooka", "The Flare Enforcer", "The Texan Trickshot", "The Noise Complaint", 
+"Umbrella", "Rocket Launcher", "The Bloody Basher", "Karambit", "The Drip Among All", "The Main Attraction", 
+"B A L D", "The Frontier Justice", "The Heavy-Duty Hitchhiker", "Artist's Decree", "Dragon's Crescent", 
+"CV-Mask", "Dead Of Night", "The Red Jade", "Turbo Construction", "The Typhoon Befriender", "The Goryeo's Fire Cart", 
+"Golden Wrench", "Australium Sniper Rifle", "Doctor & Ingram", "The Silent Assassin", "The Wrangler", 
+"The Fifth Columnist's Lifetaker", "The Mantreads", "The Flying Guillotine", "The Plunderer’s Peak", 
+"The Deckhand’s Dandy", "The Pirates Rapier", "The Jarawacker", "The Seasick Sightseer", "The Nautical Knitter", 
+"Australium Grenade Launcher", "Hungry Dino", "Mogadishu Rain", "Australium Mogadishu Rain", "The Party Hat", 
+"Australium Pistol", "The Sea-Legs Solution", "Stolen Identity", "The Horizon Bomber", "Handy Knife", 
+"Dietz Nuts Are Meat Nuts MEAT NUTS", "Gibus"
+];
+
+const guessInput = document.getElementById("guessInput");
+const guesses = document.getElementById("guesses");
+const message = document.getElementById("message");
+const hintBox = document.getElementById("hintBox");
+
+let target = items[Math.floor(Math.random() * items.length)];
+
+function normalize(text){
+    return String(text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function showHint(){
+    const val = normalize(guessInput.value);
+    if(!val) {
+        hintBox.style.display = "none";
+        return;
+    }
+
+    const filtered = items.filter(i => normalize(i).includes(val)).slice(0, 8);
+    
+    if(filtered.length > 0) {
+        hintBox.style.display = "block";
+        hintBox.innerHTML = filtered.map(item => `
+            <div class="hint-item" onclick="pickHint('${item.replace(/'/g, "\\'")}')">
+                ${item}
+            </div>
+        `).join("");
+    } else {
+        hintBox.style.display = "none";
+    }
+}
+
+function pickHint(name){
+    guessInput.value = name;
+    hintBox.style.display = "none";
+    guessInput.focus();
+}
+
+function submitGuess(){
+    const guess = guessInput.value.trim();
+    const normGuess = normalize(guess);
+    const matched = items.find(i => normalize(i) === normGuess);
+
+    if(!matched){
+        message.style.color = "#ff4c4c";
+        message.textContent = "there's no item named like this";
+        return;
+    }
+
+    message.textContent = "";
+    const normTarget = normalize(target);
+    const row = document.createElement("div");
+    row.className = "guess-row";
+
+    const len = Math.max(normGuess.length, normTarget.length);
+
+    for(let i=0; i<len; i++){
+        const gChar = normGuess[i] || "";
+        const tChar = normTarget[i] || "";
+        const box = document.createElement("div");
+        box.className = "letter";
+        box.textContent = gChar;
+
+        if(gChar === tChar && gChar !== "") {
+            box.classList.add("green");
+        } else if(gChar !== "" && normTarget.includes(gChar)) {
+            box.classList.add("yellow");
+        } else {
+            box.classList.add("gray");
+        }
+        row.appendChild(box);
+    }
+
+    guesses.prepend(row);
+    
+    if(normGuess === normTarget) {
+        message.style.color = "#2fd9c6";
+        message.innerHTML = `victory!! the word was <b>${target}</b>`;
+        guessInput.disabled = true;
+    }
+
+    guessInput.value = "";
+    hintBox.style.display = "none";
+}
+
+function restartGame() {
+    const oldTarget = target;
+    guesses.innerHTML = "";
+    message.style.color = "#ffbaba";
+    message.innerHTML = `the word was: <b>${oldTarget}</b>, you were close why did you give up?`;
+    
+    target = items[Math.floor(Math.random() * items.length)];
+    guessInput.disabled = false;
+    guessInput.value = "";
+    hintBox.style.display = "none";
+}
+
+document.addEventListener("click", (e) => {
+    if(!guessInput.contains(e.target) && !hintBox.contains(e.target)) {
+        hintBox.style.display = "none";
+    }
+});
+
+guessInput.addEventListener("input", showHint);
+guessInput.addEventListener("keydown", e => {
+    if(e.key === "Enter") submitGuess();
+});
+</script>
+</body>
+</html>
